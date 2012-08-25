@@ -1,3 +1,4 @@
+import datetime
 import locale
 import math
 import re
@@ -32,9 +33,10 @@ class Cost(object):
 
 
 class Entity(object):
-  def __init__(self, name, cost=None):
+  def __init__(self, name, cost, min_factory_level):
     self._name = name
     self._cost = cost
+    self._min_factory_level = min_factory_level
 
   @property
   def name(self):
@@ -44,29 +46,29 @@ class Entity(object):
   def cost(self):
     return self._cost
 
+  @property
+  def min_factory_level(self):
+    return self._min_factory_level
+
 
 class Facility(Entity):
   def __init__(self, name, cost, min_robotics_level):
-    Entity.__init__(self, name, cost)
-    self._min_robotics_level = min_robotics_level
+    Entity.__init__(self, name, cost, min_robotics_level)
 
 
 class Ship(Entity):
   def __init__(self, name, cost, min_shipyard_level):
-    Entity.__init__(self, name, cost)
-    self._min_shipyard_level = min_shipyard_level
+    Entity.__init__(self, name, cost, min_shipyard_level)
 
 
 class Defense(Entity):
   def __init__(self, name, cost, min_shipyard_level):
-    Entity.__init__(self, name, cost)
-    self._min_shipyard_level = min_shipyard_level
+    Entity.__init__(self, name, cost, min_shipyard_level)
 
 
 class Technology(Entity):
   def __init__(self, name, cost, min_research_level):
-    Entity.__init__(self, name, cost)
-    self._min_research_level = min_research_level
+    Entity.__init__(self, name, cost, min_research_level)
 
 
 class MetalMine(Facility):
@@ -286,6 +288,30 @@ class InterplanetaryMissile(Defense):
         self, 'Interplanetary Missile', Cost(12500, 2500, 10000), 0)
 
 
+def build_time(entity, level, factory_level, nanite_level):
+  cost = build_cost(entity, level)
+  if cost == Cost(0, 0, 0):
+    return None
+
+  if isinstance(entity, Ship) or isinstance(entity, Defense):
+    seconds = (float(cost.metal + cost.crystal) /
+               (2500 * (factory_level + 1) *
+                0.5 ** nanite_level) *
+               3600)
+  elif isinstance(entity, Technology):
+    seconds = (float(cost.metal + cost.crystal) /
+               (1000 * (factory_level + 1)) *
+               3600)
+  else:  # Facility
+    seconds = (float(cost.metal + cost.crystal) /
+               (2500 * (factory_level + 1) *
+                0.5 ** nanite_level) *
+               3600)
+
+  seconds = 0 if seconds < 0 else math.floor(seconds)
+  return datetime.timedelta(seconds=seconds)
+
+
 def build_cost(entity, level):
   metal = 0
   crystal = 0
@@ -315,6 +341,7 @@ def build_cost(entity, level):
   return Cost(int(math.floor(metal)),
               int(math.floor(crystal)),
               int(math.floor(deuterium)))
+
 
 def entity_map():
   entities = {
@@ -460,3 +487,51 @@ class Ogame(plugin.Plugin):
     for type_name in type_to_aliases:
       aliases = sorted(list(type_to_aliases[type_name]))
       self.irc.privmsg(nick, '%s: %s' % (type_name, ', '.join(aliases)))
+
+  @plugin.hook_add_command('build')
+  def build(self, params=None, **kwags):
+    """Calculates build times for entities."""
+    if params is None:
+      params = ''
+    m = re.match(r'\s*([a-z]+)(?:\s*(\d+))?(?:\s*(\d+))?(?:\s*(\d+))?', params)
+    if not m:
+      self.irc.reply('Syntax: .build <entity> '
+                     '[<level>] [<factory level>] [<nanite level>]')
+      return
+
+    alias, level, factory_level, nanite_level = m.groups()
+
+    entity = entity_from_alias(alias)
+    if entity is None:
+      self.irc.reply('Unknown entity: %s' % alias)
+      return
+
+    if level is None:
+      level = 1
+    else:
+      level = int(level)
+
+    if factory_level is None:
+      factory_level = entity.min_factory_level
+    else:
+      factory_level = int(factory_level)
+
+    if nanite_level is None:
+      nanite_level = 0
+    else:
+      nanite_level = int(nanite_level)
+
+    duration = build_time(entity, level, factory_level, nanite_level)
+
+    level_text = ' level %d' % level if not isinstance(entity, Ship) else ''
+    if isinstance(entity, Technology):
+      factory_name = 'lab'
+    elif isinstance(entity, Ship) or isinstance(entity, Defense):
+      factory_name = 'shipyard'
+    else:   # Facility
+      factory_name = 'robotics'
+
+    self.irc.reply(
+        '%s%s build time: %s (with %s %d and nanite %d)' % (
+            entity.name, level_text, duration,
+            factory_name, factory_level, nanite_level))
