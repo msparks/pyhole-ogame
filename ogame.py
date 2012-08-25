@@ -343,6 +343,37 @@ def build_cost(entity, level):
               int(math.floor(deuterium)))
 
 
+def production(entity, level, max_temp):
+  if type(entity) == MetalMine:
+    return 30 * level * 1.1 ** level
+  elif type(entity) == CrystalMine:
+    return 20 * level * 1.1 ** level
+  elif type(entity) == DeuteriumSynthesizer:
+    return 10 * level * 1.1 ** level * (-0.002 * max_temp + 1.28)
+  elif type(entity) == SolarPlant:
+    return 20 * level * 1.1 ** level
+  elif type(entity) == FusionReactor:
+    return 50 * level * 1.1 ** level
+  elif type(entity) == SolarSatellite:
+    prod = max_temp / 4 + 20
+    return 50 if prod > 50 else prod
+  else:
+    return None
+
+
+def consumption(entity, level, max_temp):
+  if type(entity) == MetalMine:
+    return 10 * level * 1.1 ** level
+  elif type(entity) == CrystalMine:
+    return 10 * level * 1.1 ** level
+  elif type(entity) == DeuteriumSynthesizer:
+    return 20 * level * 1.1 ** level
+  elif type(entity) == FusionReactor:
+    return 10 * level * 1.1 ** level * (-0.002 * max_temp + 1.28)
+  else:
+    return None
+
+
 def entity_map():
   entities = {
       'metal': MetalMine(),
@@ -427,7 +458,7 @@ class Ogame(plugin.Plugin):
       params = ''
     m = re.match(r'\s*([a-z]+)\s+(?:(\d+) to\s+)?(\d+)', params)
     if not m:
-      self.irc.reply('Syntax: .cost <entity> [<start level> to] <end level>')
+      self.irc.reply('Usage: .cost <entity> [<start level> to] <end level>')
       return
 
     alias, start_level, end_level = m.groups()
@@ -495,7 +526,7 @@ class Ogame(plugin.Plugin):
       params = ''
     m = re.match(r'\s*([a-z]+)(?:\s*(\d+))?(?:\s*(\d+))?(?:\s*(\d+))?', params)
     if not m:
-      self.irc.reply('Syntax: .build <entity> '
+      self.irc.reply('Usage: .build <entity> '
                      '[<level>] [<factory level>] [<nanite level>]')
       return
 
@@ -535,3 +566,44 @@ class Ogame(plugin.Plugin):
         '%s%s build time: %s (with %s %d and nanite %d)' % (
             entity.name, level_text, duration,
             factory_name, factory_level, nanite_level))
+
+  @plugin.hook_add_command('prod')
+  def prod(self, params=None, **kwags):
+    """Calculates production for entities."""
+    if params is None:
+      params = ''
+    m = re.match(r'\s*([a-z]+)\s*(\d+)(?:\s*(\d+))?', params)
+    if not m:
+      self.irc.reply('Usage: .prod <entity> <level> [<max temperature in C>]')
+      return
+
+    alias, level, max_temp = m.groups()
+
+    entity = entity_from_alias(alias)
+    if entity is None:
+      self.irc.reply('Unknown entity: %s' % alias)
+      return
+
+    if level is None:
+      level = 1
+    else:
+      level = int(level)
+
+    if max_temp is None:
+      max_temp = 1
+    else:
+      max_temp = int(max_temp)
+
+    prod = production(entity, level, max_temp)
+    if prod is None:
+      self.irc.reply('Entity %s does not produce anything.' % entity.name)
+      return
+    cons = consumption(entity, level, max_temp)
+
+    if cons:
+      reply = 'produces %s units and consumes %s units per hour' % (
+          format_number(prod), format_number(cons))
+    else:
+      reply = 'produces %s units per hour' % format_number(prod)
+
+    self.irc.reply('%s level %d %s.' % (entity.name, level, reply))
