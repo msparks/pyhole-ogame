@@ -136,6 +136,10 @@ class JumpGate(Facility):
   def __init__(self):
     Facility.__init__(self, 'Jump Gate', Cost(2000000, 4000000, 2000000), 0)
 
+class Astrophysics(Technology):
+  def __init__(self):
+    Technology.__init__(self, 'Astrophysics', Cost(4000, 8000, 4000), 3)
+
 class EspionageTechnology(Technology):
   def __init__(self):
     Technology.__init__(self, 'Espionage Technology', Cost(200, 1000, 200), 3)
@@ -394,6 +398,7 @@ def entity_map():
       'lunar': LunarBase(),
       'phalanx': SensorPhalanx(),
       'jump': JumpGate(),
+      'astrophysics': Astrophysics(),
       'espionage': EspionageTechnology(),
       'computer': ComputerTechnology(),
       'weapon': WeaponsTechnology(),
