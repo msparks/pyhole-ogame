@@ -296,7 +296,7 @@ def build_time(entity, level, factory_level, nanite_level):
   if isinstance(entity, Ship) or isinstance(entity, Defense):
     seconds = (float(cost.metal + cost.crystal) /
                (2500 * (factory_level + 1) *
-                0.5 ** nanite_level) *
+                2 ** nanite_level) *
                3600)
   elif isinstance(entity, Technology):
     seconds = (float(cost.metal + cost.crystal) /
@@ -305,7 +305,7 @@ def build_time(entity, level, factory_level, nanite_level):
   else:  # Facility
     seconds = (float(cost.metal + cost.crystal) /
                (2500 * (factory_level + 1) *
-                0.5 ** nanite_level) *
+                2 ** nanite_level) *
                3600)
 
   seconds = 0 if seconds < 0 else math.floor(seconds)
@@ -483,15 +483,21 @@ class Ogame(plugin.Plugin):
 
   @plugin.hook_add_command('cost')
   def cost(self, params=None, **kwargs):
-    """Calculate build cost of an entity."""
+    """Calculate build cost and time of an entity."""
     if params is None:
       params = ''
-    m = re.match(r'\s*([a-z]+)\s+(?:(\d+) to\s+)?(\d+)', params)
+    m = re.match(r'\s*([a-z]+)\s+'    # Entity alias.
+                 r'(?:(\d+) to\s+)?'  # Start level.
+                 r'(\d+)'             # End level.
+                 r'(?:\s*(\d+))?'     # Factory level.
+                 r'(?:\s*(\d+))?',    # Nanite level.
+                 params)
     if not m:
-      self.irc.reply('Usage: .cost <entity> [<start level> to] <end level>')
+      self.irc.reply('Usage: .cost <entity> [<start level> to] <end level> '
+                     '[<factory level>] [<nanite level>]')
       return
 
-    alias, start_level, end_level = m.groups()
+    alias, start_level, end_level, factory_level, nanite_level = m.groups()
     end_level = int(end_level)
     if start_level is None:
       start_level = end_level - 1
@@ -509,39 +515,6 @@ class Ogame(plugin.Plugin):
       self.irc.level('End level must be larger than start level.')
       return
 
-    cost = Cost(0, 0, 0)
-    for l in range(start_level + 1, end_level + 1):
-      cost += build_cost(entity, l)
-
-    self.irc.reply('%s level %s to %s: %s metal, %s crystal, %s deuterium.' %
-                   (entity.name, start_level, end_level,
-                    format_number(cost.metal),
-                    format_number(cost.crystal),
-                    format_number(cost.deuterium)))
-
-  @plugin.hook_add_command('build')
-  def build(self, params=None, **kwags):
-    """Calculates build times for entities."""
-    if params is None:
-      params = ''
-    m = re.match(r'\s*([a-z]+)(?:\s*(\d+))?(?:\s*(\d+))?(?:\s*(\d+))?', params)
-    if not m:
-      self.irc.reply('Usage: .build <entity> '
-                     '[<level>] [<factory level>] [<nanite level>]')
-      return
-
-    alias, level, factory_level, nanite_level = m.groups()
-
-    entity = entity_from_alias(alias)
-    if entity is None:
-      self.irc.reply('Unknown entity: %s' % alias)
-      return
-
-    if level is None:
-      level = 1
-    else:
-      level = int(level)
-
     if factory_level is None:
       factory_level = entity.min_factory_level
     else:
@@ -552,9 +525,15 @@ class Ogame(plugin.Plugin):
     else:
       nanite_level = int(nanite_level)
 
-    duration = build_time(entity, level, factory_level, nanite_level)
+    # Calculate cost (in resources) and time.
+    cost = Cost(0, 0, 0)
+    duration = datetime.timedelta(seconds=0)
+    for l in range(start_level + 1, end_level + 1):
+      cost += build_cost(entity, l)
+      duration += build_time(entity, l, factory_level, nanite_level)
 
-    level_text = ' level %d' % level if not isinstance(entity, Ship) else ''
+    # The relevant factory varies based on the entity being constructed or
+    # researched.
     if isinstance(entity, Technology):
       factory_name = 'lab'
     elif isinstance(entity, Ship) or isinstance(entity, Defense):
@@ -563,9 +542,15 @@ class Ogame(plugin.Plugin):
       factory_name = 'robotics'
 
     self.irc.reply(
-        '%s%s build time: %s (with %s %d and nanite %d)' % (
-            entity.name, level_text, duration,
-            factory_name, factory_level, nanite_level))
+        '%s level %s to %s: %s metal, %s crystal, %s deuterium '
+        '(%s with %s %d and nanite %d).' % (
+            entity.name,
+            start_level, end_level,
+            format_number(cost.metal),
+            format_number(cost.crystal),
+            format_number(cost.deuterium),
+            duration, factory_name, factory_level, nanite_level))
+
 
   @plugin.hook_add_command('prod')
   def prod(self, params=None, **kwags):
