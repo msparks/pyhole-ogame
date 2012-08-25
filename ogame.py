@@ -162,18 +162,18 @@ class HyperspaceTechnology(Technology):
   def __init__(self):
     Technology.__init__(self, 'Hyperspace Technology', Cost(0, 4000, 2000), 7)
 
-class CombustionEngine(Technology):
+class CombustionDrive(Technology):
   def __init__(self):
-    Technology.__init__(self, 'Combustion Engine', Cost(400, 0, 600), 1)
+    Technology.__init__(self, 'Combustion Drive', Cost(400, 0, 600), 1)
 
-class ImpulseEngine(Technology):
+class ImpulseDrive(Technology):
   def __init__(self):
-    Technology.__init__(self, 'Impulse Engine', Cost(2000, 4000, 600), 2)
+    Technology.__init__(self, 'Impulse Drive', Cost(2000, 4000, 600), 2)
 
-class HyperspaceEngine(Technology):
+class HyperspaceDrive(Technology):
   def __init__(self):
     Technology.__init__(
-        self, 'Hyperspace Engine', Cost(10000, 20000, 6000), 7)
+        self, 'Hyperspace Drive', Cost(10000, 20000, 6000), 7)
 
 class LaserTechnology(Technology):
   def __init__(self):
@@ -344,9 +344,9 @@ def entity_map():
       'armor': ArmorTechnology(),
       'energy': EnergyTechnology(),
       'hyperspace': HyperspaceTechnology(),
-      'combustion': CombustionEngine(),
-      'impulse': ImpulseEngine(),
-      'hyperengine': HyperspaceEngine(),
+      'combustion': CombustionDrive(),
+      'impulse': ImpulseDrive(),
+      'hyperdrive': HyperspaceDrive(),
       'laser': LaserTechnology(),
       'iontech': IonTechnology(),
       'plasmatech': PlasmaTechnology(),
