@@ -337,6 +337,18 @@ def build_cost(entity, level):
     metal = 900 * (1.8 ** (level - 1))
     crystal = 360 * (1.8 ** (level - 1))
     deuterium = 180 * (1.8 ** (level - 1))
+  elif type(entity) == Astrophysics:
+    # Round to nearest 100.
+    def nearest_hundred(n):
+      d = n / 100.0
+      if d > 0.5:
+        return int(math.ceil(d) * 100)
+      else:
+        return int(math.floor(d) * 100)
+
+    metal = nearest_hundred(entity.cost.metal * (1.75 ** (level - 1)))
+    crystal = nearest_hundred(entity.cost.crystal * (1.75 ** (level - 1)))
+    deuterium = nearest_hundred(entity.cost.deuterium * (1.75 ** (level - 1)))
   else:
     metal = entity.cost.metal * (2 ** (level - 1))
     crystal = entity.cost.crystal * (2 ** (level - 1))
