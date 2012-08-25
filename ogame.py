@@ -422,7 +422,7 @@ class Ogame(plugin.Plugin):
       return
 
     cost = Cost(0, 0, 0)
-    for l in range(start_level, end_level + 1):
+    for l in range(start_level + 1, end_level + 1):
       cost += build_cost(entity, l)
 
     self.irc.reply('%s level %s to %s: %s metal, %s crystal, %s deuterium.' %
