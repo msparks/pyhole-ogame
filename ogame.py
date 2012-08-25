@@ -451,6 +451,36 @@ def format_number(n, format='%d'):
 class Ogame(plugin.Plugin):
   """Ogame calculations."""
 
+  @plugin.hook_add_command('entities')
+  def entities(self, params=None, **kwargs):
+    """Sends a list of entity aliases to the user."""
+    entities = entity_map()
+
+    # Sort entities into type => <set of aliases>.
+    type_to_aliases = {}
+    for alias in entities:
+      entity = entities[alias]
+
+      if isinstance(entity, Facility):
+        type_name = 'Facilities'
+      elif isinstance(entity, Ship):
+        type_name = 'Ships'
+      elif isinstance(entity, Defense):
+        type_name = 'Defense'
+      elif isinstance(entity, Technology):
+        type_name = 'Technology'
+
+      if type_name not in type_to_aliases:
+        type_to_aliases[type_name] = set()
+      type_to_aliases[type_name].add(alias)
+
+    nick = self.irc.source.split('!')[0]
+    self.irc.reply('Sending list of entities to %s.' % nick)
+
+    for type_name in type_to_aliases:
+      aliases = sorted(list(type_to_aliases[type_name]))
+      self.irc.privmsg(nick, '%s: %s' % (type_name, ', '.join(aliases)))
+
   @plugin.hook_add_command('cost')
   def cost(self, params=None, **kwargs):
     """Calculate build cost of an entity."""
@@ -488,36 +518,6 @@ class Ogame(plugin.Plugin):
                     format_number(cost.metal),
                     format_number(cost.crystal),
                     format_number(cost.deuterium)))
-
-  @plugin.hook_add_command('entities')
-  def entities(self, params=None, **kwargs):
-    """Sends a list of entity aliases to the user."""
-    entities = entity_map()
-
-    # Sort entities into type => <set of aliases>.
-    type_to_aliases = {}
-    for alias in entities:
-      entity = entities[alias]
-
-      if isinstance(entity, Facility):
-        type_name = 'Facilities'
-      elif isinstance(entity, Ship):
-        type_name = 'Ships'
-      elif isinstance(entity, Defense):
-        type_name = 'Defense'
-      elif isinstance(entity, Technology):
-        type_name = 'Technology'
-
-      if type_name not in type_to_aliases:
-        type_to_aliases[type_name] = set()
-      type_to_aliases[type_name].add(alias)
-
-    nick = self.irc.source.split('!')[0]
-    self.irc.reply('Sending list of entities to %s.' % nick)
-
-    for type_name in type_to_aliases:
-      aliases = sorted(list(type_to_aliases[type_name]))
-      self.irc.privmsg(nick, '%s: %s' % (type_name, ', '.join(aliases)))
 
   @plugin.hook_add_command('build')
   def build(self, params=None, **kwags):
