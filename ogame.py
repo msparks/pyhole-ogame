@@ -359,33 +359,35 @@ def build_cost(entity, level):
               int(math.floor(deuterium)))
 
 
-def production(entity, level, max_temp):
+def production(entity, level, min_temp, max_temp):
+  avg_temp = (min_temp + max_temp) / 2.0
+
   if type(entity) == MetalMine:
     return 30 * level * 1.1 ** level
   elif type(entity) == CrystalMine:
     return 20 * level * 1.1 ** level
   elif type(entity) == DeuteriumSynthesizer:
-    return 10 * level * 1.1 ** level * (-0.002 * max_temp + 1.28)
+    return math.floor(10 * level * 1.1 ** level * (1.36 - 0.004 * avg_temp))
   elif type(entity) == SolarPlant:
     return 20 * level * 1.1 ** level
   elif type(entity) == FusionReactor:
+    # Incorrect for redesign universes.
     return 50 * level * 1.1 ** level
   elif type(entity) == SolarSatellite:
-    prod = max_temp / 4 + 20
-    return 50 if prod > 50 else prod
+    return math.floor((avg_temp + 160) / 6)
   else:
     return None
 
 
 def consumption(entity, level, max_temp):
   if type(entity) == MetalMine:
-    return 10 * level * 1.1 ** level
+    return math.ceil(10 * level * 1.1 ** level)
   elif type(entity) == CrystalMine:
-    return 10 * level * 1.1 ** level
+    return math.ceil(10 * level * 1.1 ** level)
   elif type(entity) == DeuteriumSynthesizer:
-    return 20 * level * 1.1 ** level
+    return math.ceil(20 * level * 1.1 ** level)
   elif type(entity) == FusionReactor:
-    return 10 * level * 1.1 ** level * (-0.002 * max_temp + 1.28)
+    return math.ceil(10 * level * 1.1 ** level)
   else:
     return None
 
@@ -574,12 +576,12 @@ class Ogame(plugin.Plugin):
     """Calculates production for entities."""
     if params is None:
       params = ''
-    m = re.match(r'\s*([a-z]+)\s*(\d+)(?:\s*(\d+))?', params)
+    m = re.match(r'\s*([a-z]+)\s*(\d+)(?:\s*(\d+)\s+(\d+))?', params)
     if not m:
-      self.irc.reply('Usage: .prod <entity> <level> [<max temperature in C>]')
+      self.irc.reply('Usage: .prod <entity> <level> [<min temp> <max temp>]')
       return
 
-    alias, level, max_temp = m.groups()
+    alias, level, min_temp, max_temp = m.groups()
 
     entity = entity_from_alias(alias)
     if entity is None:
@@ -591,12 +593,14 @@ class Ogame(plugin.Plugin):
     else:
       level = int(level)
 
-    if max_temp is None:
-      max_temp = 1
+    if min_temp is None:
+      min_temp = 30
+      max_temp = 30
     else:
+      min_temp = int(min_temp)
       max_temp = int(max_temp)
 
-    prod = production(entity, level, max_temp)
+    prod = production(entity, level, min_temp, max_temp)
     if prod is None:
       self.irc.reply('Entity %s does not produce anything.' % entity.name)
       return
