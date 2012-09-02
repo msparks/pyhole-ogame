@@ -222,6 +222,10 @@ class Battleship(Ship):
   def __init__(self):
     Ship.__init__(self, 'Battleship', Cost(40000, 20000, 0), 7)
 
+class Battlecruiser(Ship):
+  def __init__(self):
+    Ship.__init__(self, 'Battlecruiser', Cost(30000, 40000, 15000), 8)
+
 class ColonyShip(Ship):
   def __init__(self):
     Ship.__init__(self, 'Colony Ship', Cost(10000, 20000, 10000), 4)
@@ -434,6 +438,7 @@ def entity_map():
       'hfighter': HeavyFighter(),
       'cruiser': Cruiser(),
       'bship': Battleship(),
+      'bcruiser': Battlecruiser(),
       'colony': ColonyShip(),
       'recycler': Recycler(),
       'probe': EspionageProbe(),
